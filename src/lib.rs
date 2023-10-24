@@ -31,9 +31,8 @@ pub fn run() {
         web_sys::window()
             .and_then(|win| win.document())
             .and_then(|doc| {
-                let canvas = web_sys::Element::from(window.canvas().unwrap());
-                canvas.set_id("can");
-                doc.body().unwrap().append_child(&canvas).ok()?;
+                let canvas = window.canvas().unwrap();
+                doc.body().unwrap().append_child(&web_sys::Element::from(canvas)).ok()?;
                 Some(())
             })
             .expect("Couldn't append canvas to document body.");
@@ -45,22 +44,12 @@ pub fn run() {
                 ref event,
                 window_id,
             } if window_id == window.id() => match event {
-                WindowEvent::Resized(size) => {
-                    web_sys::window()
-                        .and_then(|win| win.document())
-                        .and_then(|doc| doc.get_element_by_id("can"))
-                        .and_then(|el| {
-                            el.set_attribute("width", &size.width.to_string()).unwrap();
-                            el.set_attribute("height", &size.height.to_string())
-                                .unwrap();
-
-                            let args = js_sys::Array::new();
-                            args.push(&JsValue::from_str("aaa"));
-                            web_sys::console::log(&args);
-                            Some(())
-                        })
-                        .unwrap();
-                }
+                // WindowEvent::Resized(size) => {
+                //     #[cfg(target_arch = "wasm32")]
+                //     web_sys::window()
+                //         .and_then(|win| win.document())
+                //         .and_then(|doc| doc.canvas());
+                // }
                 WindowEvent::CloseRequested
                 | WindowEvent::KeyboardInput {
                     event:
