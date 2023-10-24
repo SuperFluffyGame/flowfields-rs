@@ -1,7 +1,6 @@
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-use web_sys::Document;
 use winit::platform::web::WindowExtWebSys;
 use winit::{
     dpi::LogicalSize, event::*, event_loop::EventLoop, keyboard::KeyCode, window::WindowBuilder,
@@ -23,16 +22,14 @@ pub fn run() {
     // init canvas
     #[cfg(target_arch = "wasm32")]
     {
-        // Winit prevents sizing with CSS, so we have to set
-        // the size manually when on web.
-
-        let w = window.request_inner_size(LogicalSize::new(500, 500));
-
         web_sys::window()
             .and_then(|win| win.document())
             .and_then(|doc| {
                 let canvas = window.canvas().unwrap();
-                doc.body().unwrap().append_child(&web_sys::Element::from(canvas)).ok()?;
+                doc.body()
+                    .unwrap()
+                    .append_child(&web_sys::Element::from(canvas))
+                    .ok()?;
                 Some(())
             })
             .expect("Couldn't append canvas to document body.");
@@ -44,12 +41,6 @@ pub fn run() {
                 ref event,
                 window_id,
             } if window_id == window.id() => match event {
-                // WindowEvent::Resized(size) => {
-                //     #[cfg(target_arch = "wasm32")]
-                //     web_sys::window()
-                //         .and_then(|win| win.document())
-                //         .and_then(|doc| doc.canvas());
-                // }
                 WindowEvent::CloseRequested
                 | WindowEvent::KeyboardInput {
                     event:
