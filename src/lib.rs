@@ -1,13 +1,19 @@
+mod state;
+use state::State;
+
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
+use winit::dpi::PhysicalSize;
+use winit::event_loop::ControlFlow;
+#[cfg(target_arch = "wasm32")]
 use winit::platform::web::WindowExtWebSys;
-use winit::{
-    dpi::LogicalSize, event::*, event_loop::EventLoop, keyboard::KeyCode, window::WindowBuilder,
-};
+use winit::{event::*, event_loop::EventLoop, window::WindowBuilder};
+
+static STAT: i32 = 19923;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
-pub fn run() {
+pub async fn run() {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             std::panic::set_hook(Box::new(console_error_panic_hook::hook));
@@ -17,15 +23,17 @@ pub fn run() {
         }
     }
 
-    let event_loop = EventLoop::new().unwrap();
+    let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
+
     // init canvas
     #[cfg(target_arch = "wasm32")]
     {
+        window.set_inner_size(PhysicalSize::new(500, 400));
         web_sys::window()
             .and_then(|win| win.document())
             .and_then(|doc| {
-                let canvas = window.canvas().unwrap();
+                let canvas = window.canvas();
                 doc.body()
                     .unwrap()
                     .append_child(&web_sys::Element::from(canvas))
@@ -35,25 +43,35 @@ pub fn run() {
             .expect("Couldn't append canvas to document body.");
     }
 
-    event_loop
-        .run(move |event, target| match event {
-            Event::WindowEvent {
-                ref event,
-                window_id,
-            } if window_id == window.id() => match event {
-                WindowEvent::CloseRequested
-                | WindowEvent::KeyboardInput {
-                    event:
-                        KeyEvent {
-                            state: ElementState::Pressed,
-                            physical_key: winit::keyboard::PhysicalKey::Code(KeyCode::Escape),
-                            ..
-                        },
-                    ..
-                } => target.exit(),
-                _ => {}
-            },
-            _ => {}
-        })
-        .unwrap();
+    let mut state = State::new(window).await;
+    event_loop.run(move |event, _target, control_flow| match event {
+        Event::WindowEvent {
+            ref event,
+            window_id,
+        } if window_id == state.window().id() => {
+            if !state.input(&event) {
+                match event {
+                    WindowEvent::CloseRequested
+                    | WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state: ElementState::Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::Escape),
+                                ..
+                            },
+                        ..
+                    } => *control_flow = ControlFlow::Exit,
+                    _ => {}
+                }
+            }
+        }
+        Event::RedrawRequested(window_id) if window_id == state.window().id() => {
+            state.update();
+            state.render().unwrap();
+        }
+        Event::MainEventsCleared => {
+            state.window().request_redraw();
+        }
+        _ => {}
+    })
 }
